@@ -129,9 +129,9 @@ class Breeder:
             selected = self.select_with_tournament(population_cpy)
             parent1 = selected[0]
             parent2 = selected[1]
-            child1, child2 = self.crossover_example(copy(parent1), copy(parent2))
-            child1 = self.tweak_example(child1)
-            child2 = self.tweak_example(child2)
+            child1, child2 = self.crossover_shift(copy(parent1), copy(parent2))
+            child1 = self.tweak(child1)
+            child2 = self.tweak(child2)
             score_child1 = self.assess_individual_fitness(child1)
             score_child2 = self.assess_individual_fitness(child2)
             if self.dominantes(score_child1, score_child2):
@@ -144,52 +144,34 @@ class Breeder:
         return population_cpy
 
 
-    def tweak_example(self, individual):
+    def tweak(self, individual):
         """
-        we want to increase the trait to seek food and increase armor
+        mutate from each dimension one random attribute
         """
-
         dna = individual.get_dna()
-        increase = uniform(0, 0.1)
+        tweak_again_flag = 1
+        range_choice = range(0,17)
+        
+        while (tweak_again_flag > 0.33):
+            tweak_again_flag = uniform(0,1)
+            next_tweak_slot = choice(range_choice)
+            dna = self.mutate_dna(dna, next_tweak_slot)
 
-        perc = dna[0]
-        des = dna[1]
-        abil = dna[2]
-
-        perc = self.mutate_dna(
-            dna=perc, increase_value=increase, increase=0)
-        des = self.mutate_dna(
-            dna=des, increase_value=increase, increase=0)
-        abil = self.mutate_dna(
-            dna=abil, increase_value=increase, increase=0)
-
-        dna = [perc, des, abil]
-        individual.dna_to_traits(dna)
+        individual.dna_to_traits(self.normalize_dna(dna))
         return individual
 
-    def mutate_dna(self, dna, increase_value, increase):
-        # select some other dna to be decreased
-        choices = [i for i in range(len(dna))]
-        choices.remove(increase)
-        decreased = False
-        while not decreased:
-            decrease = choice(choices)
-            if dna[decrease] - increase_value >= 0.0:
-                dna[decrease] -= increase_value
-                decreased = True
-            else:
-                choices.remove(decrease)
-            if len(choices) == 0:
-                break
-        # if we were able to reduce the value for the other dna -> increase the desired dna
-        if decreased:
-            # increase the value
-            dna[increase] += increase_value if dna[increase] <= 1.0 else 1.0
-        # otherwise we cannot do anything
+    def mutate_dna(self, dna, gene):
+        increase = uniform(0, 0.2)
+        if gene < 6:
+            dna[0][gene] += increase
+        elif gene < 12:
+            dna[1][gene-6] += increase
+        else:
+            dna[2][gene-12] += increase
         return dna
 
 
-    def crossover_example(self, solution_a, solution_b):
+    def crossover_shift(self, solution_a, solution_b):
         """
         crossover of two individuals
         changing the traits of a specific category
@@ -199,14 +181,15 @@ class Breeder:
                     dodge_predetaors, armor, strength)
         others (corpse, seek_corpses, toxicity)
         Why do crossover like this?
+        -> Strategic choice
         Changing abilities independently from each other will give a
-        mix of abilities unrelated towards each other,
-        the mutation should do this.
+        mix of abilities unrelated towards each other, the mutation should do this.
         """
         dna_a = solution_a.get_dna()
         dna_b = solution_b.get_dna()
         
-        crossover_choice = 1 #choice(range(1,5))
+        crossover_choice = choice(range(1,10))
+        # don't always do crossover
         
         # do hunger crossover
         if ( crossover_choice == 1 ):
@@ -267,8 +250,7 @@ class Breeder:
             tmp = dna_a[2][4]
             dna_a[2][4] = dna_b[2][4]
             dna_b[2][4] = tmp
-        if ( crossover_choice == 5 ):
-            print("empty choice")
+
             
         solution_a.dna_to_traits(self.normalize_dna(dna_a))
         solution_b.dna_to_traits(self.normalize_dna(dna_b))
@@ -329,7 +311,7 @@ class Breeder:
         """
         making a multi-objective optimization out of that
         
-       fitness that depends on 3 elements aspects more or less valued
+       fitness that depends on 4 elements aspects more or less valued
        survival, food, attacking, poison
        depending on which of these is most valued the efficiency is evaluated
         """
@@ -342,9 +324,7 @@ class Breeder:
         score["attacking"] = dna[0][3] + dna[1][3] + dna[2][2] + \
             statistic.enemies_attacked + statistic.consumed_corpses + statistic.opponents_seen
         score["poison"] = statistic.poison_seen - statistic.poison_eaten
-        #score["avoidance"] = 
-
-        
+        #score["avoidance"] =       
         # perception_dna_array = [0][x]
         #   food =               [0][0]
         #   poison =             [0][1]
