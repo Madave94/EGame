@@ -192,17 +192,93 @@ class Breeder:
     def crossover_example(self, solution_a, solution_b):
         """
         crossover of two individuals
+        changing the traits of a specific category
+        hunger (food, seek_food, speed)
+        status (poison, health_potion, dodge_poison, seek_potion, poison_resistance)
+        aggresion (opponent, predator, seek_opponents, 
+                    dodge_predetaors, armor, strength)
+        others (corpse, seek_corpses, toxicity)
+        Why do crossover like this?
+        Changing abilities independently from each other will give a
+        mix of abilities unrelated towards each other,
+        the mutation should do this.
         """
         dna_a = solution_a.get_dna()
         dna_b = solution_b.get_dna()
-        for i in range(len(dna_a)):
-            if uniform(0, 1) < 0.5:
-                tmp = dna_a[i]
-                dna_a[i] = dna_b[i]
-                dna_b[i] = tmp
-        solution_a.dna_to_traits(dna_a)
-        solution_b.dna_to_traits(dna_b)
+        
+        crossover_choice = 1 #choice(range(1,5))
+        
+        # do hunger crossover
+        if ( crossover_choice == 1 ):
+            tmp = dna_a[0][0]
+            dna_a[0][0] = dna_b[0][0]
+            dna_b[0][0] = tmp
+            tmp = dna_a[1][0]
+            dna_a[1][0] = dna_b[1][0]
+            dna_b[1][0] = tmp
+            tmp = dna_a[2][1]
+            dna_a[2][1] = dna_b[2][1]
+            dna_b[2][1] = tmp
+        # do status crossover
+        if ( crossover_choice == 2 ):
+            tmp = dna_a[0][1]
+            dna_a[0][1] = dna_b[0][1]
+            dna_b[0][1] = tmp
+            tmp = dna_a[0][2]
+            dna_a[0][2] = dna_b[0][2]
+            dna_b[0][2] = tmp
+            tmp = dna_a[1][1]
+            dna_a[1][1] = dna_b[1][1]
+            dna_b[1][1] = tmp
+            tmp = dna_a[1][2]
+            dna_a[1][2] = dna_b[1][2]
+            dna_b[1][2] = tmp
+            tmp = dna_a[2][3]
+            dna_a[2][3] = dna_b[2][3]
+            dna_b[2][3] = tmp
+        # do aggresion crossover
+        if ( crossover_choice == 3 ):
+            tmp = dna_a[0][3]
+            dna_a[0][3] = dna_b[0][3]
+            dna_b[0][3] = tmp
+            tmp = dna_a[0][5]
+            dna_a[0][5] = dna_b[0][5]
+            dna_b[0][5] = tmp
+            tmp = dna_a[1][3]
+            dna_a[1][3] = dna_b[1][3]
+            dna_b[1][3] = tmp
+            tmp = dna_a[1][5]
+            dna_a[1][5] = dna_b[1][5]
+            dna_b[1][5] = tmp
+            tmp = dna_a[2][0]
+            dna_a[2][0] = dna_b[2][0]
+            dna_b[2][0] = tmp
+            tmp = dna_a[2][2]
+            dna_a[2][2] = dna_b[2][2]
+            dna_b[2][2] = tmp
+        # do other crossover
+        if ( crossover_choice == 4 ):
+            tmp = dna_a[0][4]
+            dna_a[0][4] = dna_b[0][4]
+            dna_b[0][4] = tmp
+            tmp = dna_a[1][4]
+            dna_a[1][4] = dna_b[1][4]
+            dna_b[1][4] = tmp
+            tmp = dna_a[2][4]
+            dna_a[2][4] = dna_b[2][4]
+            dna_b[2][4] = tmp
+        if ( crossover_choice == 5 ):
+            print("empty choice")
+            
+        solution_a.dna_to_traits(self.normalize_dna(dna_a))
+        solution_b.dna_to_traits(self.normalize_dna(dna_b))
         return solution_a, solution_b
+
+    def normalize_dna(self, dna):
+        dna[0] = dna[0] / sum(dna[0])
+        dna[1] = dna[1] / sum(dna[1])
+        dna[2] = dna[2] / sum(dna[2])
+        return dna
 
     def select_with_tournament(self, population):
         """
@@ -222,8 +298,7 @@ class Breeder:
         parents.append(final_winner_2)
         
         return parents
-
-    
+   
     def binary_tournament(self, individual, otherIndividual):
         '''
         Pareto Domination Binary Tournament Selection
