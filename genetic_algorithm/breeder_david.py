@@ -29,7 +29,6 @@ class Breeder:
         also, it gets the color of the population
         """
         return self.initialize_population_min_diversity(num_individuals, color)
-
     
     def initialize_population_min_diversity(self, num_individuals, color):
         """
@@ -127,15 +126,15 @@ class Breeder:
             where = choice(alive)._position
             color = alive[0].color
 
-            selected = self.select_example(population_cpy)
+            selected = self.select_with_tournament(population_cpy)
             parent1 = selected[0]
             parent2 = selected[1]
             child1, child2 = self.crossover_example(copy(parent1), copy(parent2))
             child1 = self.tweak_example(child1)
             child2 = self.tweak_example(child2)
-            score_child1 = self.assess_individual_fitness_example(child1)
-            score_child2 = self.assess_individual_fitness_example(child2)
-            if score_child1 > score_child2:
+            score_child1 = self.assess_individual_fitness(child1)
+            score_child2 = self.assess_individual_fitness(child2)
+            if self.dominantes(score_child1, score_child2):
                 new_individual = Dot(self.parent, color=color, position=where, dna=child1.get_dna())
             else:
                 new_individual = Dot(self.parent, color=color, position=where, dna=child2.get_dna())
@@ -205,47 +204,71 @@ class Breeder:
         solution_b.dna_to_traits(dna_b)
         return solution_a, solution_b
 
-    def select_example(self, population):
+    def select_with_tournament(self, population):
         """
-        example select
+        choose eight random individuals with replacement from the population,
+        the two best are the parents and are allowed to breed.
         """
-        fitness_array = np.empty([len(population)])
-        for i in range(len(population)):
-            score = self.assess_individual_fitness_example(population[i])
-            fitness_array[i] = score
+        parents = []
+        semi_final_winner_a = self.binary_tournament(choice(population), choice(population))
+        semi_final_winner_b = self.binary_tournament(choice(population), choice(population))
+        semi_final_winner_c = self.binary_tournament(choice(population), choice(population))
+        semi_final_winner_d = self.binary_tournament(choice(population), choice(population))
         
-        # span value range
-        for i in range(1, len(fitness_array)):
-            fitness_array[i] = fitness_array[i] + fitness_array[i - 1]
+        final_winner_1 = self.binary_tournament(semi_final_winner_a, semi_final_winner_b)
+        final_winner_2 = self.binary_tournament(semi_final_winner_c, semi_final_winner_d)
         
-        parents = self.selectParentSUS(population, fitness_array, 2)
+        parents.append(final_winner_1)
+        parents.append(final_winner_2)
+        
         return parents
 
-    def selectParentSUS(self, population, fitness_array, count):
-        """
-        Stochastic uniform sampling
-        """
-        individual_indices = []
-        # build the offset = random number between 0 and f_l / n
-        offset = uniform(0, fitness_array[-1] / count)
-        # repeat for all selections (n)
-        for _ in range(count):
-            index = 0
-            # increment the index until we reached the offset
-            while fitness_array[index] < offset:
-                index += 1
-            # increment the offset to the next target
-            offset = offset + fitness_array[-1] / count
-            individual_indices.append(population[index])
-        # return all selected individual indices
-        return np.array(individual_indices)
+    
+    def binary_tournament(self, individual, otherIndividual):
+        '''
+        Pareto Domination Binary Tournament Selection
+        '''
+        if self.dominantes(self.assess_individual_fitness(individual), \
+                      self.assess_individual_fitness(otherIndividual)):
+            return individual
+        elif self.dominantes(self.assess_individual_fitness(otherIndividual), \
+                        self.assess_individual_fitness(individual)):
+            return otherIndividual
+        else:
+            #random
+            return individual
 
-    def assess_individual_fitness_example(self, individual):
+    def dominantes(self, individual, otherIndividual):
+        '''
+        evaluate pareto dominance of two individuals towards each other.
+        '''
+        dominating = False
+        for key, val in individual.items():
+            if (val > otherIndividual[key]):
+                dominating = True
+            elif (val < otherIndividual[key]):
+                return False
+        return dominating
+
+    def assess_individual_fitness(self, individual):
         """
-        fitness depending entirely on frames survived
+        making a multi-objective optimization out of that
+        
+       fitness that depends on 3 elements aspects more or less valued
+       survival, food, attacking, poison
+       depending on which of these is most valued the efficiency is evaluated
         """
         statistic = individual.statistic
-        score = statistic.time_survived
+        dna = individual.get_dna()
+        score = {}
+        score["survival"] = statistic.time_survived
+        score["food"] = dna[0][0] + dna[1][0] + dna[2][0] + \
+            statistic.time_survived + statistic.food_eaten + statistic.food_seen
+        score["attacking"] = dna[0][3] + dna[1][3] + dna[2][2] + \
+            statistic.enemies_attacked + statistic.consumed_corpses + statistic.opponents_seen
+        score["poison"] = statistic.poison_seen - statistic.poison_eaten
+        #score["avoidance"] = 
+
         
         # perception_dna_array = [0][x]
         #   food =               [0][0]
