@@ -81,7 +81,7 @@ class Breeder:
         application of a basic genetic algorithm for breeding
         """
         population_cpy = copy(population)
-        self.evaluate_profession(pupulation)
+        self.evaluate_profession(population)
         dead = []
         alive = []
         for individual in population_cpy:
@@ -115,21 +115,67 @@ class Breeder:
 
     def tweak(self, individual):
         """
-        tweak a minimum of one attribute, most likely around 3
+        first tweak towards the profession,
+        then tweak once completly random or swap genes
         """
         dna = individual.get_dna()
-        tweak_again_flag = 1
-        range_choice = range(0,17)
+        main_trait = self.evaluate_most_valued_trait(individual)
+        increase = uniform(0,0.1)
+        perc = dna[0]
+        des = dna[1]
+        abil = dna[2]
         
-        while (tweak_again_flag > 0.33):
-            tweak_again_flag = uniform(0,1)
-            next_tweak_slot = choice(range_choice)
-            dna = self.mutate_dna(dna, next_tweak_slot)
+        if (main_trait is "survival"):
+            perc = self.mutate_dna(
+                dna=perc, increase_value=increase, increase=0)
+            des = self.mutate_dna(
+                dna=des, increase_value=increase, increase=0)
+            abil = self.mutate_dna(
+                dna=abil, increase_value=increase, increase=0)
+        if (main_trait is "attack"):
+            perc = self.mutate_dna(
+                dna=perc, increase_value=increase, increase=3)
+            des = self.mutate_dna(
+                dna=des, increase_value=increase, increase=3)
+            abil = self.mutate_dna(
+                dna=abil, increase_value=increase, increase=2)
+        if (main_trait is "defense"):
+            perc = self.mutate_dna(
+                dna=perc, increase_value=increase, increase=choice((1,5)))
+            des = self.mutate_dna(
+                dna=des, increase_value=increase, increase=choice((1,5)))
+            abil = self.mutate_dna(
+                dna=abil, increase_value=increase, increase=choice((2,4)))        
+        
+        dna = [perc, des, abil]
+        if (increase > 0.02):
+            next_tweak_slot = choice(range(0,17))
+            dna = self.mutate_dna_normal(dna, next_tweak_slot)
+        else: 
+            dna = self.mutate_dna_shuffle(dna)
 
         individual.dna_to_traits(self.normalize_dna(dna))
         return individual
+    
+    def mutate_dna_shuffle(self, dna):
+        '''
+        swap two traits in perception and traits
+        only swap food, opponents or predators traits
+        '''
+        swap_gene_A = choice((0,3,5))
+        swap_gene_B = choice((0,3,5))
+        tmp = dna[0][swap_gene_A]
+        dna[0][swap_gene_A] = dna[0][swap_gene_B]
+        dna[0][swap_gene_B] = tmp
+        tmp = dna[1][swap_gene_A]
+        dna[1][swap_gene_A] = dna[1][swap_gene_B]
+        dna[1][swap_gene_B] = tmp
+        return dna        
 
-    def mutate_dna(self, dna, gene):
+    def mutate_dna_normal(self, dna, gene):
+        '''
+        normal mutation, complete random
+        '''
         increase = uniform(0, 0.1)
         if gene < 6:
             dna[0][gene] += increase
@@ -137,6 +183,27 @@ class Breeder:
             dna[1][gene-6] += increase
         else:
             dna[2][gene-12] += increase
+        return dna
+    
+    def mutate_dna(self, dna, increase_value, increase):
+        # select some other dna to be decreased
+        choices = [i for i in range(len(dna))]
+        choices.remove(increase)
+        decreased = False
+        while not decreased:
+            decrease = choice(choices)
+            if dna[decrease] - increase_value >= 0.0:
+                dna[decrease] -= increase_value
+                decreased = True
+            else:
+                choices.remove(decrease)
+            if len(choices) == 0:
+                break
+        # if we were able to reduce the value for the other dna -> increase the desired dna
+        if decreased:
+            # increase the value
+            dna[increase] += increase_value if dna[increase] <= 1.0 else 1.0
+        # otherwise we cannot do anything
         return dna
 
     def crossover_swap(self, solution_a, solution_b):
@@ -347,7 +414,7 @@ class Breeder:
         dna = individual.get_dna()
         survival = (float) (dna[0][0] + dna[1][0])
         attack = (float) (dna[0][3] + dna[1][3])
-        defense = (float) (dna[0][5] + dna[1][5])
+        defense = (float) (dna[0][2] + dna[0][5] + dna[1][2] + dna[1][5]) / 2
         if survival > (attack and defense ): return "survival"
         if attack > defense: return "attack"
         return "defense"
