@@ -4,7 +4,6 @@ from random import choice, uniform
 from copy import copy
 
 import numpy as np
-from statsmodels.duration.tests.phreg_gentests import survival_time
 
 class Breeder:
     '''
