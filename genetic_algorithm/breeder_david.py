@@ -4,6 +4,7 @@ from random import choice, uniform
 from copy import copy
 
 import numpy as np
+from statsmodels.duration.tests.phreg_gentests import survival_time
 
 class Breeder:
     '''
@@ -81,6 +82,7 @@ class Breeder:
         application of a basic genetic algorithm for breeding
         """
         population_cpy = copy(population)
+        self.evaluate_profession(pupulation)
         dead = []
         alive = []
         for individual in population_cpy:
@@ -97,7 +99,7 @@ class Breeder:
             selected = self.select_with_tournament(population_cpy)
             parent1 = selected[0]
             parent2 = selected[1]
-            child1, child2 = self.crossover_shift(copy(parent1), copy(parent2))
+            child1, child2 = self.crossover_swap(copy(parent1), copy(parent2))
             child1 = self.tweak(child1)
             child2 = self.tweak(child2)
             score_child1 = self.assess_individual_fitness(child1)
@@ -114,7 +116,7 @@ class Breeder:
 
     def tweak(self, individual):
         """
-        mutate a minimum of one attribute, most likely around 3
+        tweak a minimum of one attribute, most likely around 3
         """
         dna = individual.get_dna()
         tweak_again_flag = 1
@@ -129,7 +131,7 @@ class Breeder:
         return individual
 
     def mutate_dna(self, dna, gene):
-        increase = uniform(0, 0.2)
+        increase = uniform(0, 0.1)
         if gene < 6:
             dna[0][gene] += increase
         elif gene < 12:
@@ -138,6 +140,21 @@ class Breeder:
             dna[2][gene-12] += increase
         return dna
 
+    def crossover_swap(self, solution_a, solution_b):
+        '''
+        Since the crossover_shift is to explorative the previous
+        crossover might be more desireable.
+        '''
+        dna_a = solution_a.get_dna()
+        dna_b = solution_b.get_dna()
+        for i in range(len(dna_a)):
+            if uniform(0, 1) < 0.5:
+                tmp = dna_a[i]
+                dna_a[i] = dna_b[i]
+                dna_b[i] = tmp
+        solution_a.dna_to_traits(dna_a)
+        solution_b.dna_to_traits(dna_b)
+        return solution_a, solution_b     
 
     def crossover_shift(self, solution_a, solution_b):
         """
@@ -152,11 +169,13 @@ class Breeder:
         -> Strategic choice
         Changing abilities independently from each other will give a
         mix of abilities unrelated towards each other, the mutation should do this.
+        It turns out then when doing the crossover always the algorithm becomes
+        very explorative, thats something we don't want.
         """
         dna_a = solution_a.get_dna()
         dna_b = solution_b.get_dna()
         
-        crossover_choice = choice(range(1,10))
+        crossover_choice = choice(range(1,100))
         # don't always do crossover
         
         # do hunger crossover
@@ -218,8 +237,7 @@ class Breeder:
             tmp = dna_a[2][4]
             dna_a[2][4] = dna_b[2][4]
             dna_b[2][4] = tmp
-
-            
+  
         solution_a.dna_to_traits(self.normalize_dna(dna_a))
         solution_b.dna_to_traits(self.normalize_dna(dna_b))
         return solution_a, solution_b
@@ -232,35 +250,46 @@ class Breeder:
 
     def select_with_tournament(self, population):
         """
-        choose eight random individuals with replacement from the population,
-        the two best are the parents and are allowed to breed.
+        selects four parents with replacement and the same main trait
+        and uses the two strongest to breed
         """
         parents = []
-        semi_final_winner_a = self.binary_tournament(choice(population), choice(population))
-        semi_final_winner_b = self.binary_tournament(choice(population), choice(population))
-        semi_final_winner_c = self.binary_tournament(choice(population), choice(population))
-        semi_final_winner_d = self.binary_tournament(choice(population), choice(population))
+        choice_A = choice(population)
+        main_trait = self.evaluate_most_valued_trait(choice_A)
+        choice_B = self.choose_parent_candidate(population, main_trait)
+        choice_C = self.choose_parent_candidate(population, main_trait)
+        choice_D = self.choose_parent_candidate(population, main_trait)
         
-        final_winner_1 = self.binary_tournament(semi_final_winner_a, semi_final_winner_b)
-        final_winner_2 = self.binary_tournament(semi_final_winner_c, semi_final_winner_d)
+        winner_one = self.binary_tournament(choice_A, choice_B, main_trait)
+        winner_two = self.binary_tournament(choice_C, choice_D, main_trait)
         
-        parents.append(final_winner_1)
-        parents.append(final_winner_2)
+        parents.append(winner_one)
+        parents.append(winner_two)
         
         return parents
-   
-    def binary_tournament(self, individual, otherIndividual):
+    
+    def choose_parent_candidate(self, population, main_trait):
         '''
-        Pareto Domination Binary Tournament Selection
+        chooses other parent with the same main trait
         '''
-        if self.dominantes(self.assess_individual_fitness(individual), \
-                      self.assess_individual_fitness(otherIndividual)):
+        choice_next = None       
+        other_trait = 100
+        while (other_trait != main_trait):
+            choice_next = choice(population)
+            other_trait = self.evaluate_most_valued_trait(choice_next)
+        return choice_next
+          
+    def binary_tournament(self, individual, otherIndividual, main_trait):
+        '''
+        Domination Binary Tournament Selection
+        '''
+        if (self.assess_individual_fitness(individual)[main_trait] >
+                      self.assess_individual_fitness(otherIndividual)[main_trait]):
             return individual
-        elif self.dominantes(self.assess_individual_fitness(otherIndividual), \
-                        self.assess_individual_fitness(individual)):
+        elif (self.assess_individual_fitness(otherIndividual)[main_trait] >
+                        self.assess_individual_fitness(individual)[main_trait]):
             return otherIndividual
         else:
-            #random
             return individual
 
     def dominantes(self, individual, otherIndividual):
@@ -278,21 +307,14 @@ class Breeder:
     def assess_individual_fitness(self, individual):
         """
         making a multi-objective optimization out of that
-        
-       fitness that depends on 4 elements aspects more or less valued
-       survival, food, attacking, poison
-       depending on which of these is most valued the efficiency is evaluated
+        fitness that depends on 3 aspects more or less valued
+        survival, attacking, defense
         """
         statistic = individual.statistic
-        dna = individual.get_dna()
         score = {}
-        score["survival"] = statistic.time_survived
-        score["food"] = dna[0][0] + dna[1][0] + dna[2][0] + \
-            statistic.time_survived + statistic.food_eaten + statistic.food_seen
-        score["attacking"] = dna[0][3] + dna[1][3] + dna[2][2] + \
-            statistic.enemies_attacked + statistic.consumed_corpses + statistic.opponents_seen
-        score["poison"] = statistic.poison_seen - statistic.poison_eaten
-        #score["avoidance"] =       
+        score["survival"] = statistic.time_survived/100 + statistic.food_eaten - statistic.food_seen
+        score["attack"] = statistic.enemies_attacked + statistic.consumed_corpses - statistic.opponents_seen
+        score["defense"] = statistic.time_survived/100 + statistic.attacked_by_opponents + statistic.attacked_by_predators
         # perception_dna_array = [0][x]
         #   food =               [0][0]
         #   poison =             [0][1]
@@ -315,3 +337,30 @@ class Breeder:
         #   toxicity =           [2][4]
 
         return score
+    
+    def evaluate_most_valued_trait(self, individual):
+        '''
+        Which trait is valued the most?
+        survival
+        attack
+        defense
+        '''
+        dna = individual.get_dna()
+        survival = (float) (dna[0][0] + dna[1][0])
+        attack = (float) (dna[0][3] + dna[1][3])
+        defense = (float) (dna[0][5] + dna[1][5])
+        if survival > (attack and defense ): return "survival"
+        if attack > defense: return "attack"
+        return "defense"
+
+    def evaluate_profession(self, population):
+        survival = 0
+        attack = 0
+        defense = 0
+        for individual in population:
+            trait = self.evaluate_most_valued_trait(individual)
+            if (trait is "survival"): survival += 1
+            if (trait is "attack"): attack += 1
+            if (trait is "defense"): defense += 1
+        print("survival: ", str(survival), "\nattack: ", str(attack), "\ndefense: ", str(defense) )
+        
