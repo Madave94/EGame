@@ -47,13 +47,13 @@ class Breeder:
     
     def check_diversity_population(self, existing_population, new_member):
         for old_member in existing_population:
-            if not self.is_diversity(old_member, new_member): 
+            if not self.is_diverse(old_member, new_member): 
                 print("Is not diverse enough, choose next...")
                 return False
         print("Is diverse enough.")
         return True
 
-    def is_diversity(self, old_member, new_member, accuracy=2):
+    def is_diverse(self, old_member, new_member, accuracy=2):
         """
         checks if if two individuals are similar in there dna
         if they are not similar the function returns true
@@ -75,38 +75,6 @@ class Breeder:
             return False  
         
         return isDiverse
-
-    def breed_copy_dead_example(self, population):
-        """
-        example breeding function
-        simply copy dead individuals traits to a new individual
-        """
-        population_cpy = copy(population)
-
-        dead = []
-        alive = []
-        for individual in population_cpy:
-            if individual.dead:
-                dead.append(individual)
-            else:
-                alive.append(individual)
-
-        if len(alive) == 0:
-            print("END OF BREED")
-            return None
-        for _ in range(len(dead)):
-            dead_individual = choice(dead)
-            alive_individual = choice(alive)
-
-            new_individual = Dot(self.parent,
-                                 color=dead_individual.color,
-                                 position=alive_individual._position,
-                                 dna=dead_individual.get_dna())
-            population_cpy.append(new_individual)
-        for dead_individual in dead:
-            population_cpy.remove(dead_individual)
-        return population_cpy
-
 
     def breed_example_with_ga(self, population):
         """
@@ -146,7 +114,7 @@ class Breeder:
 
     def tweak(self, individual):
         """
-        mutate from each dimension one random attribute
+        mutate a minimum of one attribute, most likely around 3
         """
         dna = individual.get_dna()
         tweak_again_flag = 1
