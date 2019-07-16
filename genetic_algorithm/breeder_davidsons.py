@@ -23,6 +23,7 @@ class Breeder:
         # 2 = min. half are attackers, 3 = min. 1/3 are attackers etc.
         self.attacker_ratio = 2
         self.attacker_threshold = 0.4
+        self.crossover_chance = 0.5
         self.intermediate_output = False
 
     def breed(self, population):
@@ -304,7 +305,7 @@ class Breeder:
         dna_a = solution_a.get_dna()
         dna_b = solution_b.get_dna()
         for i in range(len(dna_a)):
-            if uniform(0, 1) < 0.2:
+            if uniform(0, 1) < self.crossover_chance:
                 tmp = dna_a[i]
                 dna_a[i] = dna_b[i]
                 dna_b[i] = tmp
