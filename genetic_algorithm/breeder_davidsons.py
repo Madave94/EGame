@@ -23,7 +23,7 @@ class Breeder:
         self.attacker_number = 5
         self.attacker_threshold = 0.3
         self.crossover_chance = 0.25
-        self.intermediate_output = True
+        self.intermediate_output = False
 
     def breed(self, population):
         """
