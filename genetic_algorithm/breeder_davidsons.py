@@ -19,9 +19,9 @@ class Breeder:
         attacker_threshold: this value is used to decide when individuals are considered as attackers, if the
         threshold is low the aggressivness will decrease, the value should at least stay above 1/6
         '''
-        self.init_number_attackers = 5
+        self.init_number_attackers = 7
         # 2 = min. half are attackers, 3 = min. 1/3 are attackers etc.
-        self.attacker_ratio = 2
+        self.attacker_ratio = 1.5
         self.attacker_threshold = 0.35
         self.intermediate_output = False
 
@@ -388,11 +388,11 @@ class Breeder:
         statistic = individual.statistic
         iterations_survied = int(statistic.time_survived / 300)
         if (iterations_survied is 0): return 0.5
-        #food_rating = (statistic.food_eaten - statistic.food_seen) / iterations_survied
+        food_rating = (statistic.food_eaten - statistic.food_seen) / iterations_survied
         poison_rating = (statistic.poison_seen - statistic.poison_eaten) / iterations_survied
-        #potion_rating = (statistic.consumed_potions - statistic.potions_seen) / iterations_survied
+        potion_rating = (statistic.consumed_potions - statistic.potions_seen) / iterations_survied
         predator_rating = (statistic.predators_seen - statistic.attacked_by_predators) / iterations_survied
-        score = iterations_survied + poison_rating + predator_rating
+        score = iterations_survied + poison_rating + predator_rating + food_rating + potion_rating
         # Don't allowe negative scores
         if (score < 0): score = 0.5
         return score
