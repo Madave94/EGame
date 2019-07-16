@@ -9,6 +9,20 @@ class Breeder:
     def __init__(self, parent):
         self.parent = parent
         self.profession = {"Attacker":0,"Defender":0}
+        '''
+        parameters to set to increase/decrease exploration and exploitation
+        default 5, 2, 0.35
+        init_number_attacker: sets the number of attackers when initializing the population, range is 1-10
+        attacker_ratio: sets the minimum ratio of attackers, setting this value to 1 will create population
+            only consisting of aggressive individuals. increasing the value above 8 doesn't have any effect.
+            range 1-8, lower values increase exploitation.
+        attacker_threshold: this value is used to decide when individuals are considered as attackers, if the
+        threshold is low the aggressivness will decrease, the value should at least stay above 1/6
+        '''
+        self.init_number_attackers = 5
+        # 2 = min. half are attackers, 3 = min. 1/3 are attackers etc.
+        self.attacker_ratio = 2
+        self.attacker_threshold = 0.35
 
     def breed(self, population):
         """
@@ -36,7 +50,7 @@ class Breeder:
         """
         population = []
  
-        for _ in range(0,5):
+        for _ in range(0,self.init_number_attackers):
             aggresive_individual = Dot(self.parent, color=color)
             dna = aggresive_individual.get_dna()
             dna = self.create_attacker_dna(dna)
@@ -94,13 +108,9 @@ class Breeder:
 
     def init_defender(self, where, color):
         '''
-        initialize maximal defensive individual
+        initialize complete random defender
         '''
-        perc = [0,0.5,0,0,0,0.5]
-        des = [0,0.5,0,0,0,0.5]
-        abil = [0.2,0.2,0.2,0.2,0.2]
-        dna = [perc, des, abil]
-        new_individual = Dot(self.parent, color=color, position = where, dna=dna)
+        new_individual = Dot(self.parent, color=color, position = where)
         return new_individual
     
     def create_attacker_dna(self, dna):
@@ -110,9 +120,10 @@ class Breeder:
         desire opponents
         strength
         '''
-        dna[0][3] = uniform(0.5,1)
-        dna[1][3] = uniform(0.5,1)
-        dna[2][2] = uniform(0.5,1)
+        min_attack = float(self.attacker_threshold * 1.25)
+        dna[0][3] = uniform(min_attack,1)
+        dna[1][3] = uniform(min_attack,1)
+        dna[2][2] = uniform(min_attack,1)
         dna = self.normalize_dna(dna)
         return dna
     
@@ -151,8 +162,15 @@ class Breeder:
                 self.profession["Attacker"] += 1
                 continue
             
+            # same for the defenders
+            if self.profession["Defender"] is 0:
+                new_individual = self.init_defender(where, color)
+                population_cpy.append(new_individual)
+                self.profession["Defender"] += 1
+                continue
+            
             # at least half of our individuals should be aggressive
-            if self.profession["Attacker"] < len(alive)/2:
+            if self.profession["Attacker"] < len(alive)/self.attacker_ratio:
                 selected = self.select_example(all_attacker)
             else:
                 selected = self.select_example(population_cpy)
@@ -257,7 +275,7 @@ class Breeder:
         dna_a = solution_a.get_dna()
         dna_b = solution_b.get_dna()
         for i in range(len(dna_a)):
-            if uniform(0, 1) < 0.2:
+            if uniform(0, 1) < 0.4:
                 tmp = dna_a[i]
                 dna_a[i] = dna_b[i]
                 dna_b[i] = tmp
@@ -316,17 +334,16 @@ class Breeder:
         for individual in population:
             if self.check_profession(individual) is "Attacker": self.profession["Attacker"] += 1
             else: self.profession["Defender"] += 1
-        for key, val in self.profession.items():
-            print(key, ": ", val)
+        #for key, val in self.profession.items():
+        #    print(key, ": ", val)
             
     def check_profession(self, individual):
         '''
         If the desire and perception to attack opponents is larger enough 
         (attacker_threshold) then the  we consider an individual as an Attacker
         '''
-        attacker_threshold = 0.35
         dna = individual.get_dna()
-        if (dna[0][3] and dna[1][3]) > attacker_threshold: return "Attacker"
+        if (dna[0][3] and dna[1][3]) > self.attacker_threshold: return "Attacker"
         return "Defender"
 
     def assess_individual_fitness(self, individual):
@@ -340,12 +357,12 @@ class Breeder:
         """
         statistic = individual.statistic
         iterations_survied = int(statistic.time_survived / 300)
-        if (iterations_survied is 0): return 0.1
+        if (iterations_survied is 0): return 0.5
         #food_rating = (statistic.food_eaten - statistic.food_seen) / iterations_survied
         poison_rating = (statistic.poison_seen - statistic.poison_eaten) / iterations_survied
         potion_rating = (statistic.consumed_potions - statistic.potions_seen) / iterations_survied
         predator_rating = (statistic.predators_seen - statistic.attacked_by_predators) / iterations_survied
         score = iterations_survied + poison_rating + potion_rating + predator_rating
         # Don't allowe negative scores
-        if (score < 0): score = 0.1
+        if (score < 0): score = 0.5
         return score
