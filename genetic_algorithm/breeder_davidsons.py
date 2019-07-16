@@ -22,8 +22,8 @@ class Breeder:
         self.init_number_attackers = 5
         # 2 = min. half are attackers, 3 = min. 1/3 are attackers etc.
         self.attacker_ratio = 2
-        self.attacker_threshold = 0.4
-        self.crossover_chance = 0.5
+        self.attacker_threshold = 0.35
+        self.crossover_chance = 0.2
         self.intermediate_output = False
 
     def breed(self, population):
@@ -252,9 +252,9 @@ class Breeder:
         depending on the profession different traits will be randomly chosen for the tweak
         '''
         if (profession is "Attacker"):
-            perc = (1,2,3,5)
-            des = (1,2,3,5)
-            abil = (1,2,3)
+            perc = (1,3,5)
+            des = (1,3,5)
+            abil = (1,2)
             return perc, des, abil
         else:
             perc = (0,1,2,3,5)
