@@ -24,6 +24,7 @@ class Breeder:
         it gets the number of individuals which have to be generated
         also, it gets the color of the population
         """
+        print("Aggresive breeder with color", color[1], "!")
         return self.initialize_population_example(num_individuals, color)
 
     

@@ -19,10 +19,10 @@ class Breeder:
         attacker_threshold: this value is used to decide when individuals are considered as attackers, if the
         threshold is low the aggressivness will decrease, the value should at least stay above 1/6
         '''
-        self.init_number_attackers = 9
+        self.init_number_attackers = 5
         # 2 = min. half are attackers, 3 = min. 1/3 are attackers etc.
-        self.attacker_ratio = 2.5
-        self.attacker_threshold = 0.35
+        self.attacker_ratio = 2
+        self.attacker_threshold = 0.4
         self.intermediate_output = False
 
     def breed(self, population):
