@@ -19,11 +19,11 @@ class Breeder:
         attacker_threshold: this value is used to decide when individuals are considered as attackers, if the
         threshold is low the aggressivness will decrease, the value should at least stay above 1/6
         '''
-        self.init_number_attackers = 5
+        self.init_number_attackers = 4
         # 2 = min. half are attackers, 3 = min. 1/3 are attackers etc.
-        self.attacker_ratio = 2
-        self.attacker_threshold = 0.35
-        self.crossover_chance = 0.2
+        self.attacker_ratio = 2.5
+        self.attacker_threshold = 0.3
+        self.crossover_chance = 0.25
         self.intermediate_output = False
 
     def breed(self, population):
@@ -58,11 +58,20 @@ class Breeder:
             dna = self.create_attacker_dna(dna)
             aggresive_individual.dna_to_traits(dna)
             population.append(aggresive_individual)
+            
+        for _ in range(0,num_individuals-self.init_number_attackers):
+            aggresive_individual = Dot(self.parent, color=color)
+            dna = aggresive_individual.get_dna()
+            dna = self.create_defender_dna(dna)
+            aggresive_individual.dna_to_traits(dna)
+            population.append(aggresive_individual)
         
+        '''
         while (len(population) < num_individuals):
             individual = Dot(self.parent, color=color)
             if self.check_diversity_population(population, individual):
                 population.append(individual)
+        '''
         
         print("Davidson's ready to conquer in", population[0].color[1], "!")
         return population
@@ -143,6 +152,7 @@ class Breeder:
         dna[0][5] += 0.2
         dna[1][1] += 0.2
         dna[1][5] += 0.2
+        dna[2][1] = uniform(0.5,1)
         dna = self.normalize_dna(dna)
         return dna
     
