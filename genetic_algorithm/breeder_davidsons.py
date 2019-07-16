@@ -75,7 +75,7 @@ class Breeder:
         #print("Is diverse enough.")
         return True
 
-    def is_diverse(self, old_member, new_member, accuracy=2):
+    def is_diverse(self, old_member, new_member, accuracy=3):
         """
         checks if if two individuals are similar in there dna
         if they are not similar the function returns true
@@ -252,9 +252,9 @@ class Breeder:
         depending on the profession different traits will be randomly chosen for the tweak
         '''
         if (profession is "Attacker"):
-            perc = (1,3,5)
-            des = (1,3,5)
-            abil = (1,2)
+            perc = (1,2,3,5)
+            des = (1,2,3,5)
+            abil = (1,2,3)
             return perc, des, abil
         else:
             perc = (0,1,2,3,5)
