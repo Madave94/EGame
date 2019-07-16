@@ -135,6 +135,7 @@ class Breeder:
             else:
                 alive.append(individual)
         
+        all_attacker = self.create_attacker_population(population_cpy)
         self.count_professions_in_population(alive)
         
         for _ in range(len(dead)):
@@ -142,18 +143,25 @@ class Breeder:
             where = choice(alive)._position
             color = alive[0].color
             
-            if self.profession["Attacker"] < len(alive)/2:
+            # suppose non of the attackers survived (all are bad), create entirely new one
+            if self.profession["Attacker"] is 0:
                 new_individual = self.init_attacker(where, color)
+                all_attacker.append(new_individual)
                 population_cpy.append(new_individual)
                 self.profession["Attacker"] += 1
                 continue
-
-            selected = self.select_example(population_cpy)
+            
+            # at least half of our individuals should be aggressive
+            if self.profession["Attacker"] < len(alive)/2:
+                selected = self.select_example(all_attacker)
+            else:
+                selected = self.select_example(population_cpy)
+            
             parent1 = selected[0]
             parent2 = selected[1]
             child1, child2 = self.crossover_example(copy(parent1), copy(parent2))
-            child1 = self.tweak_example(child1)
-            child2 = self.tweak_example(child2)
+            child1 = self.tweak_depending_on_profession(child1)
+            child2 = self.tweak_depending_on_profession(child2)
             score_child1 = self.assess_individual_fitness(child1)
             score_child2 = self.assess_individual_fitness(child2)
             if score_child1 > score_child2:
@@ -166,11 +174,12 @@ class Breeder:
         print("Davidson's with ", len(population_cpy), " individuals, ready for the next round!")
         return population_cpy
 
-    def tweak_example(self, individual):
+    def tweak_depending_on_profession(self, individual):
         """
-        we want to increase the trait to seek food and increase armor
+        we want to tweak the individual depending on the profession
         """
-
+        profession = self.check_profession(individual)
+        p,d,a = self.traits_to_tweak(profession)
         dna = individual.get_dna()
         increase = uniform(0, 0.1)
 
@@ -179,16 +188,31 @@ class Breeder:
         abil = dna[2]
 
         perc = self.mutate_dna(
-            dna=perc, increase_value=increase, increase=choice(range(0,6)))
+            dna=perc, increase_value=increase, increase=choice(p))
         des = self.mutate_dna(
-            dna=des, increase_value=increase, increase=choice(range(0,6)))
+            dna=des, increase_value=increase, increase=choice(d))
         abil = self.mutate_dna(
-            dna=abil, increase_value=increase, increase=choice(range(0,5)))
+            dna=abil, increase_value=increase, increase=choice(a))
 
         dna = [perc, des, abil]
         if (increase > 0.08): self.mutate_dna_shuffle(dna)
         individual.dna_to_traits(dna)
         return individual
+
+    def traits_to_tweak(self, profession):
+        '''
+        depending on the profession different traits will be randomly chosen for the tweak
+        '''
+        if (profession is "Attacker"):
+            perc = (1,2,3,5)
+            des = (1,2,3,5)
+            abil = (0,1,2,3)
+            return perc, des, abil
+        else:
+            perc = (0,1,2,3,5)
+            des = (0,1,2,3,5)
+            abil = (0,1,2,3,4)
+            return perc, des, abil
 
     def mutate_dna(self, dna, increase_value, increase):
         # select some other dna to be decreased
@@ -225,7 +249,6 @@ class Breeder:
         dna[1][swap_gene_A] = dna[1][swap_gene_B]
         dna[1][swap_gene_B] = tmp
         return dna  
-
 
     def crossover_example(self, solution_a, solution_b):
         """
@@ -277,6 +300,13 @@ class Breeder:
         # return all selected individual indices
         return np.array(individual_indices)
 
+    def create_attacker_population(self, population):
+        all_attacker = []
+        for individual in population:
+            if "Attacker" is self.check_profession(individual):
+                all_attacker.append(individual)
+        return all_attacker
+
     def count_professions_in_population(self, population):
         '''
         Count how many attackers are in the population
@@ -306,14 +336,16 @@ class Breeder:
         x food rating: how much food did the individual see and how much did it eat?
         - poison rating: how much poison did the individual see and still did it eat?
         - potion rating: did the individual consume many of the potions it saw?
-        - predataor rating: can the individual see a predetaor and avoid it?
+        - predator rating: can the individual see a predator and avoid it?
         """
         statistic = individual.statistic
         iterations_survied = int(statistic.time_survived / 300)
-        if (iterations_survied is 0): return 0
+        if (iterations_survied is 0): return 0.1
         #food_rating = (statistic.food_eaten - statistic.food_seen) / iterations_survied
         poison_rating = (statistic.poison_seen - statistic.poison_eaten) / iterations_survied
         potion_rating = (statistic.consumed_potions - statistic.potions_seen) / iterations_survied
         predator_rating = (statistic.predators_seen - statistic.attacked_by_predators) / iterations_survied
         score = iterations_survied + poison_rating + potion_rating + predator_rating
+        # Don't allowe negative scores
+        if (score < 0): score = 0.1
         return score
