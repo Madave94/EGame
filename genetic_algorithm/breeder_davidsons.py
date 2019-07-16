@@ -147,11 +147,12 @@ class Breeder:
         '''
         dna[0][3] = 0
         dna[1][3] = 0
-        dna[0][1] += 0.2
         dna[0][5] += 0.2
+        dna[1][0] += 0.2
         dna[1][1] += 0.2
         dna[1][5] += 0.2
-        dna[2][1] = uniform(0.5,1)
+        dna[2][3] = 0
+        dna[2][4] = 0
         dna = self.normalize_dna(dna)
         return dna
     
@@ -260,9 +261,9 @@ class Breeder:
             abil = (1,2,3)
             return perc, des, abil
         else:
-            perc = (0,1,2,3,5)
-            des = (0,1,2,3,5)
-            abil = (0,1,2,3,4)
+            perc = (0,1,5)
+            des = (0,1,5)
+            abil = (0,1,2)
             return perc, des, abil
 
     def mutate_dna(self, dna, increase_value, increase):
