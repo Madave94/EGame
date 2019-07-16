@@ -23,6 +23,7 @@ class Breeder:
         # 2 = min. half are attackers, 3 = min. 1/3 are attackers etc.
         self.attacker_ratio = 2
         self.attacker_threshold = 0.35
+        self.intermediate_output = False
 
     def breed(self, population):
         """
@@ -62,7 +63,7 @@ class Breeder:
             if self.check_diversity_population(population, individual):
                 population.append(individual)
         
-        print("Davidson's ready to conqure in", population[0].color[1], "!")
+        print("Davidson's ready to conquer in", population[0].color[1], "!")
         return population
     
     def check_diversity_population(self, existing_population, new_member):
@@ -108,9 +109,12 @@ class Breeder:
 
     def init_defender(self, where, color):
         '''
-        initialize complete random defender
+        initialize defender individual
         '''
         new_individual = Dot(self.parent, color=color, position = where)
+        dna = new_individual.get_dna()
+        dna = self.create_defender_dna(dna)
+        new_individual.dna_to_traits(dna)
         return new_individual
     
     def create_attacker_dna(self, dna):
@@ -120,10 +124,24 @@ class Breeder:
         desire opponents
         strength
         '''
-        min_attack = float(self.attacker_threshold * 1.25)
-        dna[0][3] = uniform(min_attack,1)
-        dna[1][3] = uniform(min_attack,1)
-        dna[2][2] = uniform(min_attack,1)
+        min = float(self.attacker_threshold * 1.25)
+        dna[0][3] = uniform(0.5,1)
+        dna[1][3] = uniform(0.5,1)
+        dna[2][2] = uniform(0.5,1)
+        dna = self.normalize_dna(dna)
+        return dna
+    
+    def create_defender_dna(self, dna):
+        '''
+        decrease the traits unimportant for defenders
+        and increase the one important to survive
+        '''
+        dna[0][3] = 0
+        dna[1][3] = 0
+        dna[0][1] += 0.2
+        dna[0][5] += 0.2
+        dna[1][1] += 0.2
+        dna[1][5] += 0.2
         dna = self.normalize_dna(dna)
         return dna
     
@@ -149,7 +167,9 @@ class Breeder:
         all_attacker = self.create_attacker_population(population_cpy)
         self.count_professions_in_population(alive)
         
-        for _ in range(len(dead)):
+        needed_individuals = len(dead)
+        index = 0
+        while index < needed_individuals:
             # get the position where the child should be inserted on the field
             where = choice(alive)._position
             color = alive[0].color
@@ -160,6 +180,7 @@ class Breeder:
                 all_attacker.append(new_individual)
                 population_cpy.append(new_individual)
                 self.profession["Attacker"] += 1
+                index += 1
                 continue
             
             # same for the defenders
@@ -167,6 +188,7 @@ class Breeder:
                 new_individual = self.init_defender(where, color)
                 population_cpy.append(new_individual)
                 self.profession["Defender"] += 1
+                index += 1
                 continue
             
             # at least half of our individuals should be aggressive
@@ -182,19 +204,26 @@ class Breeder:
             child2 = self.tweak_depending_on_profession(child2)
             score_child1 = self.assess_individual_fitness(child1)
             score_child2 = self.assess_individual_fitness(child2)
-            if score_child1 > score_child2:
+            if needed_individuals - index > 2:
                 new_individual = Dot(self.parent, color=color, position=where, dna=child1.get_dna())
-            else:
+                population_cpy.append(new_individual)
+                index += 1
                 new_individual = Dot(self.parent, color=color, position=where, dna=child2.get_dna())
+            else:
+                new_individual = Dot(self.parent, color=color, position=where, dna=child1.get_dna())
             population_cpy.append(new_individual)
+            index += 1
         for dead_individual in dead:
             population_cpy.remove(dead_individual)
-        print("Davidson's with ", len(population_cpy), " individuals, ready for the next round!")
+        if (self.intermediate_output):
+            print("Davidson's with ", len(population_cpy), " individuals, ready for the next round!")
         return population_cpy
 
     def tweak_depending_on_profession(self, individual):
         """
         we want to tweak the individual depending on the profession
+        First the profession is checked.
+        Depending on the profession the decision is made which traits are tweaked.
         """
         profession = self.check_profession(individual)
         p,d,a = self.traits_to_tweak(profession)
@@ -224,7 +253,7 @@ class Breeder:
         if (profession is "Attacker"):
             perc = (1,2,3,5)
             des = (1,2,3,5)
-            abil = (0,1,2,3)
+            abil = (1,2,3)
             return perc, des, abil
         else:
             perc = (0,1,2,3,5)
@@ -255,8 +284,8 @@ class Breeder:
     
     def mutate_dna_shuffle(self, dna):
         '''
-        swap two traits in perception and traits
-        only swap food, opponents or predators traits
+        swap two traits in perception and desire,
+        this is necessary so that individuals can adjust their behaviour rapidly 
         '''
         swap_gene_A = choice(range(0,6))
         swap_gene_B = choice(range(0,6))
@@ -275,7 +304,7 @@ class Breeder:
         dna_a = solution_a.get_dna()
         dna_b = solution_b.get_dna()
         for i in range(len(dna_a)):
-            if uniform(0, 1) < 0.4:
+            if uniform(0, 1) < 0.2:
                 tmp = dna_a[i]
                 dna_a[i] = dna_b[i]
                 dna_b[i] = tmp
@@ -334,8 +363,9 @@ class Breeder:
         for individual in population:
             if self.check_profession(individual) is "Attacker": self.profession["Attacker"] += 1
             else: self.profession["Defender"] += 1
-        #for key, val in self.profession.items():
-        #    print(key, ": ", val)
+        if (self.intermediate_output):
+            for key, val in self.profession.items():
+                print(key, ": ", val)
             
     def check_profession(self, individual):
         '''
@@ -352,7 +382,7 @@ class Breeder:
         - individuals that didn't survive at least one iteration get a 0
         x food rating: how much food did the individual see and how much did it eat?
         - poison rating: how much poison did the individual see and still did it eat?
-        - potion rating: did the individual consume many of the potions it saw?
+        x potion rating: did the individual consume many of the potions it saw?
         - predator rating: can the individual see a predator and avoid it?
         """
         statistic = individual.statistic
@@ -360,9 +390,9 @@ class Breeder:
         if (iterations_survied is 0): return 0.5
         #food_rating = (statistic.food_eaten - statistic.food_seen) / iterations_survied
         poison_rating = (statistic.poison_seen - statistic.poison_eaten) / iterations_survied
-        potion_rating = (statistic.consumed_potions - statistic.potions_seen) / iterations_survied
+        #potion_rating = (statistic.consumed_potions - statistic.potions_seen) / iterations_survied
         predator_rating = (statistic.predators_seen - statistic.attacked_by_predators) / iterations_survied
-        score = iterations_survied + poison_rating + potion_rating + predator_rating
+        score = iterations_survied + poison_rating + predator_rating
         # Don't allowe negative scores
         if (score < 0): score = 0.5
         return score
