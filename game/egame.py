@@ -92,7 +92,7 @@ class EGame:
         self.create_items()
         self.breeding_timer += 1
         if self.breeding_timer == self.global_parameter['breeding_frame']:
-            print("BREEDING TIME")
+            #print("BREEDING TIME")
             self.breed('pop1', breeder=self.breeder_pop1)
             self.breed('pop2', breeder=self.breeder_pop2)
             self.breeding_timer = 0

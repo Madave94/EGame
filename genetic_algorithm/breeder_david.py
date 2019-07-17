@@ -48,9 +48,9 @@ class Breeder:
     def check_diversity_population(self, existing_population, new_member):
         for old_member in existing_population:
             if not self.is_diverse(old_member, new_member): 
-                print("Is not diverse enough, choose next...")
+                #print("Is not diverse enough, choose next...")
                 return False
-        print("Is diverse enough.")
+        #print("Is diverse enough.")
         return True
 
     def is_diverse(self, old_member, new_member, accuracy=2):
@@ -127,11 +127,11 @@ class Breeder:
         
         if (main_trait is "survival"):
             perc = self.mutate_dna(
-                dna=perc, increase_value=increase, increase=0)
+                dna=perc, increase_value=increase, increase=choice(range(0,6)))
             des = self.mutate_dna(
-                dna=des, increase_value=increase, increase=0)
+                dna=des, increase_value=increase, increase=choice(range(0,6)))
             abil = self.mutate_dna(
-                dna=abil, increase_value=increase, increase=0)
+                dna=abil, increase_value=increase, increase=choice((0,3,4)))
         if (main_trait is "attack"):
             perc = self.mutate_dna(
                 dna=perc, increase_value=increase, increase=3)
@@ -145,7 +145,7 @@ class Breeder:
             des = self.mutate_dna(
                 dna=des, increase_value=increase, increase=choice((1,5)))
             abil = self.mutate_dna(
-                dna=abil, increase_value=increase, increase=choice((2,4)))        
+                dna=abil, increase_value=increase, increase=2)        
         
         dna = [perc, des, abil]
         if (increase > 0.02):
@@ -162,8 +162,8 @@ class Breeder:
         swap two traits in perception and traits
         only swap food, opponents or predators traits
         '''
-        swap_gene_A = choice((0,3,5))
-        swap_gene_B = choice((0,3,5))
+        swap_gene_A = choice(range(0,6))
+        swap_gene_B = choice(range(0,6))
         tmp = dna[0][swap_gene_A]
         dna[0][swap_gene_A] = dna[0][swap_gene_B]
         dna[0][swap_gene_B] = tmp
@@ -378,9 +378,10 @@ class Breeder:
         """
         statistic = individual.statistic
         score = {}
-        score["survival"] = statistic.time_survived/100 + statistic.food_eaten - statistic.food_seen
-        score["attack"] = statistic.enemies_attacked + statistic.consumed_corpses - statistic.opponents_seen
-        score["defense"] = statistic.time_survived/100 + statistic.attacked_by_opponents + statistic.attacked_by_predators
+        score["survival"] = statistic.time_survived
+        score["attack"] = statistic.enemies_attacked + statistic.consumed_corpses + statistic.opponents_seen
+        score["defense"] = statistic.attacked_by_opponents - statistic.attacked_by_predators + \
+                        statistic.poison_seen - statistic.poison_eaten + statistic.predators_seen
         # perception_dna_array = [0][x]
         #   food =               [0][0]
         #   poison =             [0][1]
@@ -412,9 +413,10 @@ class Breeder:
         defense
         '''
         dna = individual.get_dna()
-        survival = (float) (dna[0][0] + dna[1][0])
-        attack = (float) (dna[0][3] + dna[1][3])
-        defense = (float) (dna[0][2] + dna[0][5] + dna[1][2] + dna[1][5]) / 2
+        survival = ( (float) (dna[2][0] + dna[2][3] + dna[2][4]) ) / 3.0
+        attack = ( (float) (dna[0][3] + dna[1][3] + dna[2][2]) ) / 3.0
+        defense = ( (float) (dna[0][1] + dna[0][5] + dna[1][1] \
+                             + dna[1][5] + dna[2][2]) ) / 5.0
         if survival > (attack and defense ): return "survival"
         if attack > defense: return "attack"
         return "defense"

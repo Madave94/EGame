@@ -20,7 +20,7 @@ class Breeder:
     crossover_chance = 0.3
     attacker_number = 5 
     defender_random_init = True
-    intermediate_output = True
+    intermediate_output = False
     def __init__(self, parent):
         self.parent = parent
         self.profession = {"Attacker":0,"Defender":0}        
@@ -414,14 +414,18 @@ class Breeder:
         return score
     
     def update_strategy(self, population):
+        '''
+        TODO
+        '''
         if (self.intermediate_output):
             print("Current strategy\nThreshold: ", self.attacker_threshold, "\nAtackers: ", self.attacker_number)
         score = 0
         for individual in population:
             statistic = individual.statistic
+            iterations_survied = int(statistic.time_survived / 300)
             aggresion = statistic.enemies_attacked - statistic.attacked_by_predators
-            defense = statistic.opponents_seen - statistic.attacked_by_opponents
-            score += defense - aggresion
+            defense = iterations_survied + statistic.opponents_seen - statistic.attacked_by_opponents
+            score += aggresion - defense
         if score > 0:
             if self.attacker_number < 8 : self.attacker_number += 1
         else:
