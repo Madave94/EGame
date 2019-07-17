@@ -6,24 +6,24 @@ from copy import copy
 import numpy as np
 
 class Breeder:
+    '''
+    parameters to set to increase/decrease exploration and exploitation
+    default 5, 2, 0.35
+    init_number_attacker: sets the number of attackers when initializing the population, range is 1-10
+    attacker_number: sets the minimum ratio of attackers, setting this value to 1 will create population
+        only consisting of aggressive individuals. increasing the value above 8 doesn't have any effect.
+        range 1-8, lower values increase exploitation.
+    attacker_threshold: this value is used to decide when individuals are considered as attackers, if the
+    threshold is low the aggressivness will decrease, the value should at least stay above 1/6
+    '''
+    attacker_threshold = 0.35
+    crossover_chance = 0.3
+    attacker_number = 5 
+    defender_random_init = True
+    intermediate_output = True
     def __init__(self, parent):
         self.parent = parent
-        self.profession = {"Attacker":0,"Defender":0}
-        '''
-        parameters to set to increase/decrease exploration and exploitation
-        default 5, 2, 0.35
-        init_number_attacker: sets the number of attackers when initializing the population, range is 1-10
-        attacker_number: sets the minimum ratio of attackers, setting this value to 1 will create population
-            only consisting of aggressive individuals. increasing the value above 8 doesn't have any effect.
-            range 1-8, lower values increase exploitation.
-        attacker_threshold: this value is used to decide when individuals are considered as attackers, if the
-        threshold is low the aggressivness will decrease, the value should at least stay above 1/6
-        '''
-        # 2 = min. half are attackers, 3 = min. 1/3 are attackers etc.
-        self.attacker_number = 5
-        self.attacker_threshold = 0.3
-        self.crossover_chance = 0.25
-        self.intermediate_output = False
+        self.profession = {"Attacker":0,"Defender":0}        
 
     def breed(self, population):
         """
@@ -57,20 +57,19 @@ class Breeder:
             dna = self.create_attacker_dna(dna)
             aggresive_individual.dna_to_traits(dna)
             population.append(aggresive_individual)
-            
-        for _ in range(0,num_individuals-self.attacker_number):
-            aggresive_individual = Dot(self.parent, color=color)
-            dna = aggresive_individual.get_dna()
-            dna = self.create_defender_dna(dna)
-            aggresive_individual.dna_to_traits(dna)
-            population.append(aggresive_individual)
         
-        '''
-        while (len(population) < num_individuals):
-            individual = Dot(self.parent, color=color)
-            if self.check_diversity_population(population, individual):
-                population.append(individual)
-        '''
+        if (self.defender_random_init):
+            while (len(population) < num_individuals):
+                individual = Dot(self.parent, color=color)
+                if self.check_diversity_population(population, individual):
+                    population.append(individual)
+        else:
+            for _ in range(0,num_individuals-self.attacker_number):
+                aggresive_individual = Dot(self.parent, color=color)
+                dna = aggresive_individual.get_dna()
+                dna = self.create_defender_dna(dna)
+                aggresive_individual.dna_to_traits(dna)
+                population.append(aggresive_individual)
         
         print("Davidson's ready to conquer in", population[0].color[1], "!")
         return population
@@ -133,7 +132,6 @@ class Breeder:
         desire opponents
         strength
         '''
-        min = float(self.attacker_threshold * 1.25)
         dna[0][3] = uniform(0.5,1)
         dna[1][3] = uniform(0.5,1)
         dna[2][2] = uniform(0.5,1)
@@ -151,10 +149,23 @@ class Breeder:
         dna[1][0] += 0.2
         dna[1][1] += 0.2
         dna[1][5] += 0.2
-        dna[2][3] = 0
-        dna[2][4] = 0
         dna = self.normalize_dna(dna)
         return dna
+    
+    def traits_to_tweak(self, profession):
+        '''
+        depending on the profession different traits will be randomly chosen for the tweak
+        '''
+        if (profession is "Attacker"):
+            perc = (3,3)
+            des = (3,3)
+            abil = (2,2)
+            return perc, des, abil
+        else:
+            perc = (0,1,2,3,4,5)
+            des = (0,1,2,3,4,5)
+            abil = (0,1,2,3,4)
+            return perc, des, abil
     
     def normalize_dna(self, dna):
         dna[0] = dna[0] / sum(dna[0])
@@ -166,6 +177,7 @@ class Breeder:
         """
         application of a basic genetic algorithm for breeding
         """
+        self.update_strategy(population)
         population_cpy = copy(population)
         dead = []
         alive = []
@@ -250,21 +262,6 @@ class Breeder:
         #if (increase > 0.08): self.mutate_dna_shuffle(dna)
         individual.dna_to_traits(dna)
         return individual
-
-    def traits_to_tweak(self, profession):
-        '''
-        depending on the profession different traits will be randomly chosen for the tweak
-        '''
-        if (profession is "Attacker"):
-            perc = (1,2,3,5)
-            des = (1,2,3,5)
-            abil = (1,2,3)
-            return perc, des, abil
-        else:
-            perc = (0,1,5)
-            des = (0,1,5)
-            abil = (0,1,2)
-            return perc, des, abil
 
     def mutate_dna(self, dna, increase_value, increase):
         # select some other dna to be decreased
@@ -406,12 +403,28 @@ class Breeder:
         #potion_rating = (statistic.consumed_potions - statistic.potions_seen) / iterations_survied
         predator_rating = (statistic.predators_seen - statistic.attacked_by_predators) / iterations_survied
         if self.check_profession(individual) is "Attacker":
-            offense_rating = statistic.enemies_attacked + statistic.consumed_corpses
-            score = poison_rating + predator_rating + offense_rating
+            offense_rating = (statistic.enemies_attacked + statistic.consumed_corpses) / iterations_survied
+            score = poison_rating + predator_rating + offense_rating**offense_rating
         else:
-            defense_rating = statistic.enemies_attacked * (not individual.dead)
-            score = iterations_survied + poison_rating + predator_rating + defense_rating
+            defense_rating = ( statistic.enemies_attacked * (not individual.dead) ) / iterations_survied
+            score = iterations_survied + poison_rating + predator_rating + defense_rating**defense_rating
 
         # Don't allowe negative scores
         if (score < 0.5): score = 0.5
         return score
+    
+    def update_strategy(self, population):
+        if (self.intermediate_output):
+            print("Current strategy\nThreshold: ", self.attacker_threshold, "\nAtackers: ", self.attacker_number)
+        score = 0
+        for individual in population:
+            statistic = individual.statistic
+            aggresion = statistic.enemies_attacked - statistic.attacked_by_predators
+            defense = statistic.opponents_seen - statistic.attacked_by_opponents
+            score += defense - aggresion
+        if score > 0:
+            if self.attacker_number < 8 : self.attacker_number += 1
+        else:
+            if self.attacker_number > 3 :self.attacker_number -= 1
+        if (self.intermediate_output):
+            print("New strategy\nThreshold: ", self.attacker_threshold, "\nAtackers: ", self.attacker_number)
