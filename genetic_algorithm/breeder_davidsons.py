@@ -22,19 +22,22 @@ class Breeder:
     
     parameters to set to increase/decrease exploration and exploitation
     default 5, 2, 0.35
-    init_number_attacker: sets the number of attackers when initializing the population, range is 1-10
-    attacker_number: sets the minimum ratio of attackers, setting this value to 1 will create population
-        only consisting of aggressive individuals. increasing the value above 8 doesn't have any effect.
-        range 1-8, lower values increase exploitation.
+    attacker_number: sets the minimum number of attackers, setting this value to 10 will create population
+        only consisting of aggressive individuals. increasing the value above 10 doesn't have any effect.
+        range 0-10.
     attacker_threshold: this value is used to decide when individuals are considered as attackers, if the
-    threshold is low the aggressivness will decrease, the value should at least stay above 1/6
+        threshold is low the aggressiveness will decrease, the value should at least stay above 1/6
+    crossover_chance: change the crossover chance, I decreased the crossover very much.
+    defender_random_init: If this is true, no bias for the initial defender population will be applied, an instead a
+        number of maximal diverse individuals will be initialized.
+    adoptive_strategy: turn this on to change the number of professions dynamically during runtime.
     '''
+    attacker_number = 5 
     attacker_threshold = 0.35
     crossover_chance = 0.025
-    attacker_number = 5 
-    defender_random_init = True
+    defender_random_init = False
     adoptive_strategy = True
-    intermediate_output = True
+    intermediate_output = False
     def __init__(self, parent):
         self.parent = parent
         self.profession = {"Attacker":0,"Defender":0}        
@@ -196,8 +199,8 @@ class Breeder:
         Depending on the initially set number of profession new individuals will be added
         to our population. The parameters can be found in the beginning of the class.
         
-        attackers are only allowed to breed with attackers.
-        defenders are only allowed to breed with defenders.
+        attackers breed new attackers only with attackers.
+        defenders can be breeded by all.
         
         we will take both breeded individuals not only one, so no score is evaluated.
         If only one can be chosen its just the first one, this is random since the
@@ -233,7 +236,7 @@ class Breeder:
                 selected = self.select_example(all_attacker)
                 profession_flag = True
             else:
-                selected = self.select_example(all_defender)
+                selected = self.select_example(population_cpy)
                 profession_flag = False
             
             parent1 = selected[0]
@@ -268,6 +271,8 @@ class Breeder:
         we want to tweak the individual depending on the profession
         First the profession is checked.
         Depending on the profession the decision is made which traits are tweaked.
+        
+        The dna_shuffel is something used instead of the crossover.
         """
         profession = self.check_profession(individual)
         p,d,a = self.traits_to_tweak(profession)
@@ -286,7 +291,7 @@ class Breeder:
             dna=abil, increase_value=increase, increase=choice(a))
 
         dna = [perc, des, abil]
-        #if (increase > 0.08): self.mutate_dna_shuffle(dna)
+        if (increase > 0.09): self.mutate_dna_shuffle(dna)
         individual.dna_to_traits(dna)
         return individual
 
@@ -315,6 +320,7 @@ class Breeder:
         '''
         swap two traits in perception and desire,
         this is necessary so that individuals can adjust their behaviour rapidly 
+        it is somehow a substitute for the crossover.
         '''
         swap_gene_A = choice(range(0,6))
         swap_gene_B = choice(range(0,6))
