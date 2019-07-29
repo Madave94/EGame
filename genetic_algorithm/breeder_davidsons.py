@@ -21,7 +21,11 @@ class Breeder:
     Tweak them only in certain directions depending on their profession.
     
     parameters to set to increase/decrease exploration and exploitation
-    default 5, 2, 0.35
+    default 5, 0.35, 0.025, False, True, False
+    Sampling for performance with this settings:
+    Performance against aggressive: Won 19:6 
+    Performance against passive: Won 7:3
+    
     attacker_number: sets the minimum number of attackers, setting this value to 10 will create population
         only consisting of aggressive individuals. increasing the value above 10 doesn't have any effect.
         range 0-10.
