@@ -277,7 +277,8 @@ class Breeder:
         First the profession is checked.
         Depending on the profession the decision is made which traits are tweaked.
         
-        The dna_shuffel is something used instead of the crossover.
+        The dna_shuffel is something used instead of the crossover. (while the crossover is
+        still activated anyways but with a low value).
         """
         profession = self.check_profession(individual)
         p,d,a = self.traits_to_tweak(profession)
@@ -340,8 +341,9 @@ class Breeder:
     def crossover_example(self, solution_a, solution_b):
         """
         crossover of two individuals
-        The crossover is set to a very low value so it doesnt happen to often,
-        since it does not follow any strategy.
+        The crossover is set to a very low value so it doesn't happen to often.
+        I basically tried different parameters and it turns out that a lower crossover
+        improves my individuals, I suppose this is related to the two professions.
         """
         dna_a = solution_a.get_dna()
         dna_b = solution_b.get_dna()
@@ -359,6 +361,8 @@ class Breeder:
         The chosen selection method seems to work fine.
         I tried to use a tournament selection instead, 
         The influence appears to be neglectable.
+        More of a "meta-selection" is made in the strategy definition earlier,
+        this can be only seen as the last steps in my selection procedure.
         """
         fitness_array = np.empty([len(population)])
         for i in range(len(population)):
@@ -375,6 +379,8 @@ class Breeder:
     def selectParentSUS(self, population, fitness_array, count):
         """
         Stochastic uniform sampling
+        In my fitness I guranteed that no individual has a very low fitness,
+        so here still every individual has a chance to be chosen. 
         """
         individual_indices = []
         # build the offset = random number between 0 and f_l / n
@@ -438,6 +444,13 @@ class Breeder:
         - predator rating: can the individual see a predator and avoid it?
         
         x = unused fitness ratings.
+        
+        The number of survived iterations is divided by the number of frames, to somehow make the values more
+        close to each other. So for each breeding session the individual will get +1 on its counter.
+        I decided to exclude the dna entirely from the assessment rating and only use the statistics.
+        I do this since I dont want to reward my individuals for having only a desireable DNA set based on my
+        assumption (since we know they could be wrong). For the ratings (same for the strategy) I always tought,
+        what does my individual want to do? The individual should see the predetaor but should not get attacked from them etc.!
         """
         statistic = individual.statistic
         iterations_survied = int(statistic.time_survived / 300)
