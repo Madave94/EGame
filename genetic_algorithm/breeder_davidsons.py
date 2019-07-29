@@ -7,6 +7,19 @@ import numpy as np
 
 class Breeder:
     '''
+    General outcomes:
+    I tried different approaches (first quite random, second multi-objective and this one with the professions).
+    It turns out that the assumed domain knowledge does no necessarily lead to better outcomes (~bias).
+    -> Assuming we know thinks that turn out to be exactly the opposite.
+    A completely random breeder might perform decently enough with only a fitness criteria for the survival time.
+    However, for the task I assume that my population needs a certain aggressiveness in order to win the game against
+    passive population, i guarantee this by dividing the population into two professions.
+    
+    The general Strategy here is:
+    Update the strategy (distribution of professions).
+    Breed the two professions only with each other using two different fitness measurement depending on the profession.
+    Tweak them only in certain directions depending on their profession.
+    
     parameters to set to increase/decrease exploration and exploitation
     default 5, 2, 0.35
     init_number_attacker: sets the number of attackers when initializing the population, range is 1-10
@@ -17,10 +30,11 @@ class Breeder:
     threshold is low the aggressivness will decrease, the value should at least stay above 1/6
     '''
     attacker_threshold = 0.35
-    crossover_chance = 0.3
+    crossover_chance = 0.025
     attacker_number = 5 
     defender_random_init = True
-    intermediate_output = False
+    adoptive_strategy = True
+    intermediate_output = True
     def __init__(self, parent):
         self.parent = parent
         self.profession = {"Attacker":0,"Defender":0}        
@@ -32,7 +46,7 @@ class Breeder:
         each individual has certain statistics and traits
         """
         # return self.breed_copy_dead_example(population)
-        return self.breed_example_with_ga(population)
+        return self.breed_depending_on_profession(population)
 
     def initialize_population(self, num_individuals, color):
         """
@@ -65,16 +79,20 @@ class Breeder:
                     population.append(individual)
         else:
             for _ in range(0,num_individuals-self.attacker_number):
-                aggresive_individual = Dot(self.parent, color=color)
-                dna = aggresive_individual.get_dna()
+                defensive_individual = Dot(self.parent, color=color)
+                dna = defensive_individual.get_dna()
                 dna = self.create_defender_dna(dna)
-                aggresive_individual.dna_to_traits(dna)
+                defensive_individual.dna_to_traits(dna)
                 population.append(aggresive_individual)
         
         print("Davidson's ready to conquer in", population[0].color[1], "!")
         return population
     
     def check_diversity_population(self, existing_population, new_member):
+        '''
+        Compares the new individual with the other individuals in the population.
+        It works somehow like pareto dominance checking but not with dominance, instead with diversity.
+        '''
         for old_member in existing_population:
             if not self.is_diverse(old_member, new_member): 
                 #print("Is not diverse enough, choose next...")
@@ -173,11 +191,20 @@ class Breeder:
         dna[2] = dna[2] / sum(dna[2])
         return dna
     
-    def breed_example_with_ga(self, population):
+    def breed_depending_on_profession(self, population):
         """
-        application of a basic genetic algorithm for breeding
+        Depending on the initially set number of profession new individuals will be added
+        to our population. The parameters can be found in the beginning of the class.
+        
+        attackers are only allowed to breed with attackers.
+        defenders are only allowed to breed with defenders.
+        
+        we will take both breeded individuals not only one, so no score is evaluated.
+        If only one can be chosen its just the first one, this is random since the
+        parents have been chosen randomly before.
         """
-        self.update_strategy(population)
+        if self.adoptive_strategy:
+            self.update_strategy(population)
         population_cpy = copy(population)
         dead = []
         alive = []
@@ -206,7 +233,7 @@ class Breeder:
                 selected = self.select_example(all_attacker)
                 profession_flag = True
             else:
-                selected = self.select_example(population_cpy)
+                selected = self.select_example(all_defender)
                 profession_flag = False
             
             parent1 = selected[0]
@@ -214,8 +241,8 @@ class Breeder:
             child1, child2 = self.crossover_example(copy(parent1), copy(parent2))
             child1 = self.tweak_depending_on_profession(child1)
             child2 = self.tweak_depending_on_profession(child2)
-            score_child1 = self.assess_individual_fitness(child1)
-            score_child2 = self.assess_individual_fitness(child2)
+            #score_child1 = self.assess_individual_fitness(child1)
+            #score_child2 = self.assess_individual_fitness(child2)
             if needed_individuals - index > 2:
                 new_individual = Dot(self.parent, color=color, position=where, dna=child1.get_dna())
                 population_cpy.append(new_individual)
@@ -302,6 +329,8 @@ class Breeder:
     def crossover_example(self, solution_a, solution_b):
         """
         crossover of two individuals
+        The crossover is set to a very low value so it doesnt happen to often,
+        since it does not follow any strategy.
         """
         dna_a = solution_a.get_dna()
         dna_b = solution_b.get_dna()
@@ -394,6 +423,8 @@ class Breeder:
         - poison rating: how much poison did the individual see and still did it eat?
         x potion rating: did the individual consume many of the potions it saw?
         - predator rating: can the individual see a predator and avoid it?
+        
+        x = unused fitness ratings.
         """
         statistic = individual.statistic
         iterations_survied = int(statistic.time_survived / 300)
@@ -415,7 +446,9 @@ class Breeder:
     
     def update_strategy(self, population):
         '''
-        TODO
+        adopting the strategy depending on the current population.
+        Some of the statistics measurement are taken to evaluate if the population should adjust to more
+        aggressiveness or defensiveness.   
         '''
         if (self.intermediate_output):
             print("Current strategy\nThreshold: ", self.attacker_threshold, "\nAtackers: ", self.attacker_number)
