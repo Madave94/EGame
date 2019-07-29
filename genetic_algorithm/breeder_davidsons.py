@@ -61,7 +61,8 @@ class Breeder:
     
     def initialize_population_min_diversity(self, num_individuals, color):
         """
-        There will be 5 diverse individuals and 5 attackers.
+        There will be the set number of individuals. Either the individuals are initialized with a bias
+        or with a diversity measurement.
         
         initializer that allows only individuals with a certain diversity.
         according to (Luke, 2013) Page 32
@@ -148,7 +149,7 @@ class Breeder:
     
     def create_attacker_dna(self, dna):
         '''
-        increase the traits important for attackers
+        increase the traits important (assumption) for attackers
         perception opponents
         desire opponents
         strength
@@ -161,8 +162,8 @@ class Breeder:
     
     def create_defender_dna(self, dna):
         '''
-        decrease the traits unimportant for defenders
-        and increase the one important to survive
+        decrease the traits unimportant (assumption) for defenders
+        and increase the one important (assumption) to survive
         '''
         dna[0][3] = 0
         dna[1][3] = 0
@@ -233,10 +234,10 @@ class Breeder:
                         
             # get the desired number of attackers and defenders
             if self.profession["Attacker"] < self.attacker_number:
-                selected = self.select_example(all_attacker)
+                selected = self.select_individual(all_attacker)
                 profession_flag = True
             else:
-                selected = self.select_example(population_cpy)
+                selected = self.select_individual(population_cpy)
                 profession_flag = False
             
             parent1 = selected[0]
@@ -349,9 +350,11 @@ class Breeder:
         solution_b.dna_to_traits(dna_b)
         return solution_a, solution_b
 
-    def select_example(self, population):
+    def select_individual(self, population):
         """
-        example select
+        The chosen selection method seems to work fine.
+        I tried to use a tournament selection instead, 
+        The influence appears to be neglectable.
         """
         fitness_array = np.empty([len(population)])
         for i in range(len(population)):
